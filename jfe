@@ -30,7 +30,7 @@ def flush_mangle_table():
 atexit.register(flush_mangle_table)
 
 def logger(*msg):
-    if opts.verbose: 
+    if opts.verbose:
         print(msg)
 
 # XXX unused for now
@@ -47,10 +47,10 @@ class RequestHandler(SimpleHTTPRequestHandler):
         self.send_response(404)
         self.send_header('Content-Length',0)
         self.end_headers()
-        
+
     def do_GET(self):
         self.protocol_version = 'HTTP/1.1'
-        if(self.path[-1]=="/"): 
+        if(self.path[-1]=="/"):
             self.path="/noindex"
         challenge = self.path.split("/")[-1]
         if challenge in challenges:
@@ -73,8 +73,8 @@ class JFEServer(object):
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.sock.setsockopt(socket.SOL_IP, 19, 1) #ORDINALS!  Actually IP_TRANSPARENT
         self.sock.bind((self.host, self.port))
-        
-        
+
+
 
     def listen(self):
         # needs to be part of the JFE server, or it doesn't survive daemonization
@@ -90,7 +90,7 @@ class JFEServer(object):
 
         self.sock.listen(100)
         while True:
-            try: 
+            try:
                 client, address = self.sock.accept()
             except:
                 sys.exit(1)
@@ -106,7 +106,7 @@ class JFEServer(object):
         if sniff.find(".well-known/acme-challenge")>-1:
             logger( "found acme challenge")
             port = 2
-        if(port == 443): 
+        if(port == 443):
             port = 80
         sniff = binascii.hexlify(sniff)
 
@@ -126,7 +126,7 @@ class JFEServer(object):
             ctx.load_cert_chain(certfile=opts.accountcache + "/selfstub.cer")
             def on_sni(sslSocket,serverName,ctx):
                 logger("on_sni: ", serverName)
-                if not serverName: 
+                if not serverName:
                     return None
                 if not re.match("^((?!-)[A-Za-z0-9-]{1,63}(?<!-)\.)+[A-Za-z]{2,6}$", serverName):
                     logger("regex match of servername failed")
@@ -165,12 +165,12 @@ class JFEServer(object):
                 sslSocket.context = newctx
                 return None
             ctx.set_servername_callback(on_sni)
-            try: 
+            try:
                 client = ctx.wrap_socket(client, server_side=True,suppress_ragged_eofs=True)
             except Exception as e:
                 print e.message
                 pass
-        
+
         forward = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         # XXX How to make the connection appear to come from its original source?
         try: forward.connect(("127.0.0.1", port))
@@ -183,7 +183,7 @@ class JFEServer(object):
         # waiting for it) and I don't want one connection to be able to block
         # everything else.  It'd be nice to use *anything* else but there's
         # missing features in every other approach, see readme
-        
+
         client.setblocking(1)
         client.settimeout(999)
         forward.setblocking(1)
@@ -221,7 +221,7 @@ class JFEServer(object):
                     #f.close()
         except certbotClient.WaitABit as e:
             import datetime
-            print ("Try again in %s." % (e.until_when - datetime.datetime.now()))   
+            print ("Try again in %s." % (e.until_when - datetime.datetime.now()))
             # XXX need to actually implement a blocker
         except:
             raise
@@ -244,7 +244,7 @@ class JFEServer(object):
 
     def toForward(self, client, address, forward):
         while 1:
-            try: 
+            try:
                 data = client.recv(1024)
                 if len(data)==0: raise Exception
                 forward.send(data)
@@ -255,7 +255,7 @@ class JFEServer(object):
 
     def toClient(self, client, address, forward):
         while 1:
-            try: 
+            try:
                 data = forward.recv(1024)
                 if len(data)==0: raise Exception
                 client.send(data)
@@ -281,11 +281,11 @@ iptables -t mangle -A PREROUTING  -p tcp --dport 23:65535 ! -d 127.0.0.1 -j TPRO
 iptables -L -t mangle
 """
     os.system(s)
-   
+
 opts = None
 remainder = None
-    
-        
+
+
 
 
 if __name__ == "__main__":
@@ -307,7 +307,7 @@ from Certbot/Let's Encrypt/CertBot."""
 #    parser.add_option("-w", "--webroot", dest="webroot", default="/var/www/html", help="Location of webroot (/var/www/html)")
     parser.add_option("-c", "--cache", dest="accountcache", default=os.getcwd() + "/cache", help="Location of cached credentials (./cache)")
     parser.add_option("-v", "--verbose", dest="verbose", default=False, action="store_true", help="Verbose (false)")
-    
+
 
     opts, remainder = parser.parse_args(sys.argv)
     print opts, remainder
@@ -315,18 +315,18 @@ from Certbot/Let's Encrypt/CertBot."""
     if opts.staging:
         opts.accountcache += "/staging/"
     if not os.path.isdir(opts.accountcache): os.mkdir(opts.accountcache)
-    
+
     apply_firewall()
 
 
-            
+
     jfe_server = JFEServer('',1)
     if opts.daemonize:
         daemon = Daemonize(app="jfe", pid=opts.pidfile, auto_close_fds = False, action=jfe_server.listen, foreground = False)
         daemon.start()
         time.sleep(1)
     else:
-        try: 
+        try:
             jfe_server.listen()
         except:
             flush_mangle_table()
